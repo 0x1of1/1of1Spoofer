@@ -1,0 +1,98 @@
+# 1of1Spoofer .gitignore
+
+# Environment variables
+.env
+
+# Composer dependencies
+/vendor/
+composer.phar
+
+# User uploaded files
+/uploads/*
+!/uploads/.gitkeep
+
+# Logs
+/logs/*
+!/logs/.gitkeep
+
+# Cached files
+.php_cs.cache
+.phpunit.result.cache
+
+# IDE files
+.idea/
+.vscode/
+*.sublime-*
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Docker
+.docker/data/
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+
+# Environment files
+.env.*
+!.env.example
+
+# PHP error logs
+php_errors.log
+error_log
+
+# IDE and editor files
+*.sublime-project
+*.sublime-workspace
+*~
+
+# Logs
+logs
+*.log
+npm-debug.log*
+access_log
+
+# Dependencies
+/node_modules/
+/bower_components/
+
+# Development/IDE related
+.idea/
+.vscode/
+*.swp
+*.swo
+.env.*
+!.env.example
+phpunit.xml
+*.sublime-project
+*.sublime-workspace
+
+# Uploads and temporary files
+/uploads/*
+!/uploads/.gitkeep
+/cache/*
+!/cache/.gitkeep
+/temp/*
+!/temp/.gitkeep
+
+# Configuration
+config.php
+
+# Backup files
+*.bak
+*.old
+*.backup
+*.sql
+*.zip
+*.tar
+*.gz 

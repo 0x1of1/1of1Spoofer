@@ -1,0 +1,185 @@
+/**
+ * 1of1Spoofer - Custom Styles
+ * 
+ * This file contains custom CSS styles for the 1of1Spoofer application.
+ */
+
+/* Body and General Styles */
+body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+footer {
+    margin-top: auto;
+}
+
+/* Card Styles */
+.card {
+    border: none;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    transition: all 0.3s ease;
+}
+
+.card:hover {
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+.card-header {
+    font-weight: 500;
+}
+
+/* Form Styles */
+.form-control:focus, .form-select:focus {
+    border-color: #86b7fe;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+/* Badge Styles */
+.badge {
+    font-weight: 500;
+    padding: 0.35em 0.65em;
+}
+
+/* Button Styles */
+.btn {
+    font-weight: 500;
+}
+
+.btn-primary {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+.btn-primary:hover {
+    background-color: #0b5ed7;
+    border-color: #0a58ca;
+}
+
+.btn-success {
+    background-color: #198754;
+    border-color: #198754;
+}
+
+.btn-success:hover {
+    background-color: #157347;
+    border-color: #146c43;
+}
+
+/* Alert Styles */
+.alert {
+    border: none;
+    border-radius: 0.375rem;
+}
+
+/* Progress Bar */
+.progress {
+    height: 0.5rem;
+    border-radius: 0.25rem;
+}
+
+/* Rich Text Editor (Summernote) Customization */
+.note-editor .note-toolbar {
+    background-color: #f8f9fa;
+}
+
+.note-editor.note-frame {
+    border-color: #dee2e6;
+}
+
+.note-editor.note-frame .note-editing-area .note-editable {
+    background-color: #fff;
+    color: #212529;
+}
+
+/* Dark mode overrides for the editor */
+[data-bs-theme="dark"] .note-editor.note-frame {
+    border-color: #495057;
+}
+
+[data-bs-theme="dark"] .note-editor .note-toolbar {
+    background-color: #343a40;
+}
+
+[data-bs-theme="dark"] .note-editor.note-frame .note-editing-area .note-editable {
+    background-color: #212529;
+    color: #f8f9fa;
+}
+
+/* Analysis Results */
+#analyzeResults pre {
+    max-height: 100px;
+    overflow-y: auto;
+    font-size: 0.75rem;
+    margin-bottom: 0;
+}
+
+#analyzeResults .progress {
+    height: 0.5rem;
+}
+
+/* Template Items */
+.template-item, .template-modal-item {
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.template-item:hover, .template-modal-item:hover {
+    background-color: rgba(13, 110, 253, 0.1);
+}
+
+/* SMTP Settings Section */
+#smtpSection {
+    background-color: rgba(0, 0, 0, 0.03);
+}
+
+[data-bs-theme="dark"] #smtpSection {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Modals */
+.modal-header {
+    border-bottom: none;
+}
+
+.modal-footer {
+    border-top: none;
+}
+
+/* Dark Mode Specific Styles */
+[data-bs-theme="dark"] {
+    --bs-body-bg: #212529;
+    --bs-body-color: #f8f9fa;
+}
+
+[data-bs-theme="dark"] .card {
+    background-color: #2c3034;
+}
+
+[data-bs-theme="dark"] .form-control,
+[data-bs-theme="dark"] .form-select {
+    background-color: #2c3034;
+    border-color: #495057;
+    color: #f8f9fa;
+}
+
+[data-bs-theme="dark"] pre {
+    background-color: #343a40 !important;
+    color: #f8f9fa !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .card-body {
+        padding: 1rem;
+    }
+    
+    h5 {
+        font-size: 1.1rem;
+    }
+    
+    .btn {
+        padding: 0.375rem 0.5rem;
+    }
+} 

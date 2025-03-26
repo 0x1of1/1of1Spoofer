@@ -1,0 +1,19 @@
+{
+  "name": "modern-zaqar/email-spoofer",
+  "description": "A modern, secure email spoofing tool for penetration testing and security awareness training",
+  "type": "project",
+  "license": "GPL-3.0-or-later",
+  "require": {
+    "php": ">=8.0",
+    "phpmailer/phpmailer": "^6.8",
+    "ext-json": "*",
+    "ext-fileinfo": "*"
+  },
+  "autoload": {
+    "files": []
+  },
+  "config": {
+    "optimize-autoloader": true,
+    "sort-packages": true
+  }
+}

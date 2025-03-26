@@ -1,0 +1,344 @@
+/**
+ * 1of1spoofer - Main CSS styles
+ */
+
+:root {
+    /* 1of1spoofer color scheme - dark blue and black theme */
+    --primary-color: #0b4f6c;
+    --secondary-color: #01baef;
+    --accent-color: #fbaf00;
+    --dark-color: #121212;
+    --darker-color: #0a0a0a;
+    --light-color: #e0e0e0;
+    --card-bg: #181818;
+    --text-color: #f5f5f5;
+}
+
+body {
+    background-color: var(--dark-color);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: var(--text-color);
+}
+
+.navbar {
+    background-color: var(--primary-color) !important;
+}
+
+.navbar-brand i {
+    color: var(--accent-color);
+    margin-right: 5px;
+}
+
+.card {
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    margin-bottom: 20px;
+    background-color: var(--card-bg);
+    border: 1px solid #2a2a2a;
+}
+
+.card-header {
+    background-color: var(--primary-color) !important;
+    color: white;
+    font-weight: 500;
+    border-top-left-radius: 8px !important;
+    border-top-right-radius: 8px !important;
+    border-bottom: 1px solid #2a2a2a;
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.btn-primary:hover {
+    background-color: #0a3d54;
+    border-color: #0a3d54;
+}
+
+.form-control, .form-select {
+    background-color: #2a2a2a;
+    border: 1px solid #3a3a3a;
+    color: var(--text-color);
+}
+
+.form-control:focus, .form-select:focus {
+    background-color: #333;
+    border-color: var(--primary-color);
+    color: var(--text-color);
+    box-shadow: 0 0 0 0.25rem rgba(11, 79, 108, 0.25);
+}
+
+.form-label {
+    font-weight: 500;
+    margin-bottom: 0.25rem;
+    color: var(--light-color);
+}
+
+.status-indicator {
+    width: 12px;
+    height: 12px;
+    display: inline-block;
+    border-radius: 50%;
+    margin-right: 5px;
+}
+
+.status-success {
+    background-color: #28a745;
+}
+
+.status-warning {
+    background-color: #ffc107;
+}
+
+.status-danger {
+    background-color: #dc3545;
+}
+
+.footer, .bg-dark {
+    background-color: var(--darker-color) !important;
+    color: white;
+    padding: 1rem 0;
+}
+
+/* Custom modal styling */
+.modal-content {
+    background-color: var(--card-bg);
+    color: var(--text-color);
+    border: 1px solid #2a2a2a;
+}
+
+.modal-header {
+    background-color: var(--primary-color) !important;
+    color: white;
+    border-bottom: 1px solid #2a2a2a;
+}
+
+.modal-footer {
+    border-top: 1px solid #2a2a2a;
+}
+
+/* Custom animation for success message */
+@keyframes fadeInOut {
+    0% { opacity: 0; }
+    10% { opacity: 1; }
+    90% { opacity: 1; }
+    100% { opacity: 0; }
+}
+
+.alert-floating {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    animation: fadeInOut 3s forwards;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .card {
+        margin-bottom: 15px;
+    }
+    
+    .container {
+        padding: 0 15px;
+    }
+}
+
+/* 1of1spoofer Logo Styling */
+.app-logo {
+    font-weight: 700;
+    letter-spacing: -0.5px;
+}
+
+.app-logo i {
+    color: var(--accent-color);
+}
+
+/* Domain analysis results styling */
+.analysis-results .card {
+    transition: all 0.3s ease;
+}
+
+.analysis-results .card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.3);
+}
+
+.vulnerability-score {
+    font-size: 2rem;
+    font-weight: 700;
+}
+
+.record-name {
+    font-weight: 600;
+    color: var(--secondary-color);
+}
+
+.record-value {
+    font-family: monospace;
+    background: #232323;
+    padding: 2px 5px;
+    border-radius: 3px;
+    word-break: break-all;
+}
+
+/* Settings modal styling */
+#settingsModal .form-check {
+    padding-left: 2rem;
+}
+
+/* Table styling */
+.table {
+    color: var(--text-color);
+}
+
+.table tbody tr {
+    background-color: var(--card-bg);
+}
+
+.table-striped tbody tr:nth-of-type(odd) {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Accordion styling */
+.accordion-item {
+    background-color: var(--card-bg);
+    border: 1px solid #2a2a2a;
+}
+
+.accordion-button {
+    background-color: var(--card-bg);
+    color: var(--text-color);
+}
+
+.accordion-button:not(.collapsed) {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.accordion-button::after {
+    filter: invert(1);
+}
+
+/* Pre and code styling */
+pre, code {
+    background-color: #232323;
+    color: var(--light-color);
+    border-radius: 4px;
+}
+
+/* Alert styling */
+.alert {
+    border: none;
+}
+
+.alert-info {
+    background-color: rgba(1, 186, 239, 0.1);
+    color: #01baef;
+}
+
+.alert-warning {
+    background-color: rgba(251, 175, 0, 0.1);
+    color: #fbaf00;
+}
+
+.alert-danger {
+    background-color: rgba(220, 53, 69, 0.1);
+    color: #dc3545;
+}
+
+.alert-success {
+    background-color: rgba(40, 167, 69, 0.1);
+    color: #28a745;
+}
+
+/* Rich text editor (Summernote) customization for dark theme */
+.note-editor.note-frame {
+    background-color: #2a2a2a;
+    border: 1px solid #3a3a3a;
+}
+
+.note-editor.note-frame .note-editing-area .note-editable {
+    background-color: #2a2a2a;
+    color: var(--text-color);
+}
+
+.note-editor .note-toolbar {
+    background-color: #252525;
+    border-bottom: 1px solid #3a3a3a;
+}
+
+.note-editor .note-toolbar .note-btn {
+    background-color: #333;
+    border-color: #444;
+    color: #ddd;
+}
+
+.note-editor .note-toolbar .note-btn:hover {
+    background-color: #444;
+    border-color: #555;
+}
+
+.note-editor .dropdown-menu {
+    background-color: #333;
+    border-color: #444;
+    color: var(--text-color);
+}
+
+.note-editor .dropdown-menu a {
+    color: var(--text-color);
+}
+
+.note-editor .dropdown-menu a:hover {
+    background-color: #444;
+}
+
+.note-editor .note-color-palette div .note-color-btn {
+    border-color: #444;
+}
+
+.note-editor .note-color-palette div .note-color-btn:hover {
+    border-color: #666;
+}
+
+.note-editor .note-color .note-dropdown-menu,
+.note-editor .note-para .note-dropdown-menu {
+    background-color: #333;
+}
+
+/* Textarea and form overrides for rich text editor */
+textarea.form-control,
+.form-select,
+.form-control {
+    background-color: #2a2a2a !important;
+    color: var(--text-color) !important;
+    border: 1px solid #3a3a3a !important;
+}
+
+/* Also ensure all iframes inherit the proper color scheme */
+iframe {
+    color-scheme: dark;
+    background-color: #2a2a2a;
+}
+
+/* Make sure placeholder text is visible */
+::placeholder {
+    color: #aaa !important;
+    opacity: 0.7 !important;
+}
+
+/* Modal dialog for rich text editor */
+.note-modal-content {
+    background-color: #333;
+    color: var(--text-color);
+    border: 1px solid #444;
+}
+
+.note-modal-header {
+    border-bottom: 1px solid #444;
+}
+
+.note-modal-footer {
+    border-top: 1px solid #444;
+} 

@@ -1,0 +1,36 @@
+version: '3'
+
+services:
+  1of1spoofer:
+    container_name: 1of1spoofer
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:80"
+    volumes:
+      # Mount specific directories rather than the entire codebase
+      # This prevents overwriting the vendor directory installed in the container
+      - ./templates:/var/www/html/templates
+      - ./includes:/var/www/html/includes
+      - ./css:/var/www/html/css
+      - ./js:/var/www/html/js
+      - ./logs:/var/www/html/logs
+      - ./uploads:/var/www/html/uploads
+      - ./assets:/var/www/html/assets
+      - ./config.php:/var/www/html/config.php
+      - ./index.php:/var/www/html/index.php
+      - ./test_smtp.php:/var/www/html/test_smtp.php
+      - ./thread_builder.php:/var/www/html/thread_builder.php
+
+      # Ensure the uploads and logs directories exist
+      - ./uploads:/var/www/html/uploads
+    restart: unless-stopped
+    environment:
+      # Set environment variables for SMTP
+      - SMTP_HOST=lessonsdrivingschool.co.uk
+      - SMTP_PORT=587
+      - SMTP_SECURITY=tls
+      - SMTP_USERNAME=unbiased@lessonsdrivingschool.co.uk
+      - SMTP_PASSWORD=60_horos$$co7E!_pe
+      - SMTP_DEBUG=4

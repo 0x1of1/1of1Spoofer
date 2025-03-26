@@ -1,0 +1,97 @@
+Received: from postback20b.mail.yandex.net (postback20b.mail.yandex.net [2a02:6b8:c02:900:1:45:d181:da20])
+	by ke7tbgbqp742jbs5.sas.yp-c.yandex.net (notsolitesrv/Yandex) with LMTPS id VhD9dPbhCTgL-XlFEvYOF
+	for <m.g3ar@yandex.com>; Fri, 21 Mar 2025 15:29:32 +0300
+Received: from mail-nwsmtp-mxfront-production-main-54.sas.yp-c.yandex.net (mail-nwsmtp-mxfront-production-main-54.sas.yp-c.yandex.net [IPv6:2a02:6b8:c24:2404:0:640:51b3:0])
+	by postback20b.mail.yandex.net (Yandex) with ESMTPS id C12FA608BB
+	for <m.g3ar@yandex.com>; Fri, 21 Mar 2025 15:29:32 +0300 (MSK)
+Received: from out-11.pe-b.jellyfish.systems (out-11.pe-b.jellyfish.systems [198.54.127.77])
+	by mail-nwsmtp-mxfront-production-main-54.sas.yp-c.yandex.net (mxfront/Yandex) with ESMTPS id TTKXUf6E4Cg0-ITjCwOYc;
+	Fri, 21 Mar 2025 15:29:31 +0300
+X-Yandex-Fwd: 1
+Authentication-Results: mail-nwsmtp-mxfront-production-main-54.sas.yp-c.yandex.net; spf=pass (mail-nwsmtp-mxfront-production-main-54.sas.yp-c.yandex.net: domain of mkmors.com designates 198.54.127.77 as permitted sender, rule=[ip4:198.54.127.64/27]) smtp.mail=yarnovichj@mkmors.com; dkim=pass header.i=@mkmors.com
+X-Yandex-Spam: 1
+Received: from prod-lbout-phx.jellyfish.systems (new-01.privateemail.com [198.54.118.220])
+	by pe-b.jellyfish.systems (Postfix) with ESMTPA id 4ZK1wR0NFCzFqWg
+	for <m.g3ar@yandex.com>; Fri, 21 Mar 2025 12:29:27 +0000 (UTC)
+Received: from MTA-11-1.privateemail.com (unknown [10.50.14.23])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (2048 bits))
+	(No client certificate requested)
+	by NEW-01.privateemail.com (Postfix) with ESMTPS id 4ZK1wR094Rz3hhVZ
+	for <m.g3ar@yandex.com>; Fri, 21 Mar 2025 08:29:27 -0400 (EDT)
+Received: from mta-11.privateemail.com (localhost [127.0.0.1])
+	by mta-11.privateemail.com (Postfix) with ESMTP id 4ZK1wQ68yvz3hhVG
+	for <m.g3ar@yandex.com>; Fri, 21 Mar 2025 08:29:26 -0400 (EDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple; d=mkmors.com; s=default;
+	t=1742560166; bh=5J9ZBs2B0Sc8mAPAtxUkXTNN5ZkpeVIw0mul57zW2jo=;
+	h=Date:From:To:In-Reply-To:References:Subject:From;
+	b=Jk2YEgw2tNqVyU633AQxZHgTlsmz989q/bZWzXuBJ1p6V6tB25ZcU2MWA1FiXkcho
+	 Q9YA2gA/q1axcQSezXacHFVtg3yZ5niehsHDb9MjCuV/AfOeXRNsmTcSsXK4FW6ETR
+	 rgMC+ZVfZS7MJhQE9PBxBxACIDpsOmJxsrZ+husn73NXiYTJupPSfdY5reT0Ru1i7I
+	 2nZkoBix4kz9HQh+KC1rwrwxxF8K9fSqcqqFKwkHxK3SzMMpYELW3c9X8n4DSmKipr
+	 I514Vptq7JDP7Yrp3y0hap9KMc8MSGunHhOeyL7dqwdDVaT7rvoBuPOFskmFyfuXrB
+	 0NJkbpkV6gcOQ==
+Received: from APP-14 (unknown [10.50.14.214])
+	by mta-11.privateemail.com (Postfix) with ESMTPA
+	for <m.g3ar@yandex.com>; Fri, 21 Mar 2025 08:29:26 -0400 (EDT)
+Date: Fri, 21 Mar 2025 08:29:26 -0400 (EDT)
+From: Joshua Yarnovich <yarnovichj@mkmors.com>
+To: m.g3ar@yandex.com
+Message-ID: <511889185.1155566.1742560166781@privateemail.com>
+In-Reply-To: <212549952367dd5b913585a0.12819642@noshinku.com>
+References: <212549952367dd5b913585a0.12819642@noshinku.com>
+Subject: Re: ssssssssssssssssssssss
+MIME-Version: 1.0
+Content-Type: multipart/alternative; 
+	boundary="----=_Part_1155565_713327248.1742560166780"
+X-Priority: 3
+Importance: Normal
+X-Mailer: Open-Xchange Mailer v7.10.6-Rev73
+X-Originating-Client: open-xchange-appsuite
+X-Virus-Scanned: ClamAV using ClamSMTP
+Return-Path: yarnovichj@mkmors.com
+X-Yandex-Forward: 7b4cea80fbd7850a8f3f80a301dc4fe2
+
+------=_Part_1155565_713327248.1742560166780
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+
+i'm doing okay, how are you?
+
+> On 03/21/2025 7:29 AM CDT Arie Hefter <arie@noshinku.com> wrote:
+>  
+>  
+> 
+> hello how are you?
+> 
+
+------=_Part_1155565_713327248.1742560166780
+MIME-Version: 1.0
+Content-Type: text/html; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+
+<!doctype html>
+<html>
+ <head> 
+  <meta charset="UTF-8"> 
+ </head>
+ <body>
+  <div>
+   i'm doing okay, how are you?
+  </div> 
+  <blockquote type="cite"> 
+   <div>
+    On 03/21/2025 7:29 AM CDT Arie Hefter &lt;arie@noshinku.com&gt; wrote:
+   </div> 
+   <div>
+    &nbsp;
+   </div> 
+   <div>
+    &nbsp;
+   </div> 
+   <p>hello how are you?</p> 
+  </blockquote>
+ </body>
+</html>
+------=_Part_1155565_713327248.1742560166780--

@@ -1,0 +1,27 @@
+# Composer
+/vendor/
+composer.lock
+
+# Environment files
+.env
+.env.backup
+
+# Logs & uploads
+/ModernZaqar/logs/*
+!/ModernZaqar/logs/.gitkeep
+/ModernZaqar/uploads/*
+!/ModernZaqar/uploads/.gitkeep
+
+# Editor and system files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Cache and temporary files
+*.cache
+*.tmp
+*.bak
+
+# PHP error logs
+php_errors.log 
