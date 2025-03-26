@@ -7,10 +7,10 @@ composer.lock
 .env.backup
 
 # Logs & uploads
-/ModernZaqar/logs/*
-!/ModernZaqar/logs/.gitkeep
-/ModernZaqar/uploads/*
-!/ModernZaqar/uploads/.gitkeep
+/1of1Spoofer/logs/*
+!/1of1Spoofer/logs/.gitkeep
+/1of1Spoofer/uploads/*
+!/1of1Spoofer/uploads/.gitkeep
 
 # Editor and system files
 .idea/
