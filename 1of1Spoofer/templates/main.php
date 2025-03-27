@@ -135,6 +135,31 @@ echo "<!-- SMTP Settings Debug: " . htmlspecialchars(json_encode($currentSmtpSet
                                 <textarea class="form-control" id="message" name="message" rows="6" required></textarea>
                             </div>
                             
+                            <!-- Signature input -->
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <label for="enableSignature" class="form-label m-0">Email Signature</label>
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="enableSignature" name="enable_signature" value="yes">
+                                        <label class="form-check-label" for="enableSignature">Include signature</label>
+                                    </div>
+                                </div>
+                                <div id="signatureContainer" class="d-none">
+                                    <textarea class="form-control" id="signature" name="signature" rows="4"></textarea>
+                                    <div class="form-text mt-1">
+                                        Create a professional signature with text, formatting, and images. The signature will be added below your message.
+                                    </div>
+                                    <div class="mt-2 d-flex justify-content-end">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary me-2" id="saveSignatureBtn">
+                                            <i class="bi bi-save me-1"></i> Save Signature
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" id="loadSignatureBtn">
+                                            <i class="bi bi-arrow-counterclockwise me-1"></i> Load Saved Signature
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            
                             <!-- Previous email content modal -->
                             <div class="modal fade" id="replyHelperModal" tabindex="-1" aria-labelledby="replyHelperModalLabel" aria-hidden="true">
                                 <div class="modal-dialog modal-lg">

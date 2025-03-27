@@ -336,6 +336,8 @@ HTML;
             // This handles images pasted directly into the rich text editor
             $pattern = '/<img[^>]*src="data:image\/(jpeg|jpg|png|gif);base64,([^"]+)"[^>]*>/i';
             if (preg_match_all($pattern, $htmlBody, $matches, PREG_SET_ORDER)) {
+                file_put_contents($logFile, date('Y-m-d H:i:s') . " [INFO]: Found " . count($matches) . " embedded base64 images in email\n", FILE_APPEND);
+
                 foreach ($matches as $index => $match) {
                     $imageType = $match[1];
                     $base64Data = $match[2];
@@ -366,10 +368,85 @@ HTML;
                     );
 
                     // Replace in the HTML
-                    $replacement = '<img src="cid:' . $cid . '"';
-                    $htmlBody = str_replace($match[0], $replacement, $htmlBody);
+                    $newImgTag = '<img src="cid:' . $cid . '"';
+                    // Preserve alt, width, height and other attributes
+                    if (preg_match('/<img([^>]*)src="data:image\/(jpeg|jpg|png|gif);base64,[^"]+"([^>]*)>/i', $match[0], $attrMatches)) {
+                        $beforeSrc = $attrMatches[1] ?? '';
+                        $afterSrc = $attrMatches[3] ?? '';
+                        $newImgTag = '<img' . $beforeSrc . 'src="cid:' . $cid . '"' . $afterSrc . '>';
+                    }
 
-                    file_put_contents($logFile, date('Y-m-d H:i:s') . " [INFO]: Converted inline base64 image to embedded image with CID: $cid\n", FILE_APPEND);
+                    $htmlBody = str_replace($match[0], $newImgTag, $htmlBody);
+                    file_put_contents($logFile, date('Y-m-d H:i:s') . " [INFO]: Converted inline base64 image #{$index} to embedded image with CID: $cid\n", FILE_APPEND);
+                }
+            } else {
+                file_put_contents($logFile, date('Y-m-d H:i:s') . " [INFO]: No inline base64 images found in the email body\n", FILE_APPEND);
+            }
+
+            // Also handle regular image URLs by converting them to use HTTPS
+            $htmlBody = preg_replace('/<img([^>]+)src="http:\/\/([^"]+)"([^>]*)>/i', '<img$1src="https://$2"$3>', $htmlBody);
+            file_put_contents($logFile, date('Y-m-d H:i:s') . " [INFO]: Converted image URLs to HTTPS where needed\n", FILE_APPEND);
+
+            // Process signature section for image embedding
+            if (preg_match('/<div class="signature">(.*?)<\/div>/s', $htmlBody, $signatureMatch)) {
+                $signatureContent = $signatureMatch[1];
+                file_put_contents($logFile, date('Y-m-d H:i:s') . " [INFO]: Found signature section in the email\n", FILE_APPEND);
+
+                // Look for image tags in the signature that aren't already embedded
+                if (preg_match_all('/<img[^>]*src=["\'](?!cid:)([^"\']+)["\'][^>]*>/i', $signatureContent, $sigImgMatches, PREG_SET_ORDER)) {
+                    file_put_contents($logFile, date('Y-m-d H:i:s') . " [INFO]: Found " . count($sigImgMatches) . " images in signature to process\n", FILE_APPEND);
+
+                    // Process each signature image
+                    foreach ($sigImgMatches as $imgIndex => $imgMatch) {
+                        $imgUrl = $imgMatch[1];
+                        file_put_contents($logFile, date('Y-m-d H:i:s') . " [INFO]: Processing signature image: " . $imgUrl . "\n", FILE_APPEND);
+
+                        // If it's a remote URL, try to download it
+                        if (filter_var($imgUrl, FILTER_VALIDATE_URL)) {
+                            try {
+                                // Generate a temp file for the image
+                                $tempDir = sys_get_temp_dir();
+                                $tempFile = tempnam($tempDir, 'sig_img_');
+                                $imgData = @file_get_contents($imgUrl);
+
+                                if ($imgData) {
+                                    file_put_contents($tempFile, $imgData);
+
+                                    // Determine image type
+                                    $imgInfo = getimagesize($tempFile);
+                                    if ($imgInfo && isset($imgInfo['mime'])) {
+                                        $mimeType = $imgInfo['mime'];
+                                        $ext = str_replace('image/', '', $mimeType);
+
+                                        // Generate a CID for the image
+                                        $cid = 'sig_img_' . md5($imgUrl . rand(1000, 9999) . time()) . '@' . $domain;
+
+                                        // Add as embedded image
+                                        $mail->addEmbeddedImage(
+                                            $tempFile,
+                                            $cid,
+                                            'signature_image_' . $imgIndex . '.' . $ext,
+                                            'base64',
+                                            $mimeType
+                                        );
+
+                                        // Replace in the HTML
+                                        $pattern = '/<img([^>]*)src=["\']' . preg_quote($imgUrl, '/') . '["\']([^>]*)>/i';
+                                        $replacement = '<img$1src="cid:' . $cid . '"$2>';
+                                        $htmlBody = preg_replace($pattern, $replacement, $htmlBody);
+
+                                        file_put_contents($logFile, date('Y-m-d H:i:s') . " [INFO]: Embedded remote signature image with CID: " . $cid . "\n", FILE_APPEND);
+                                    } else {
+                                        file_put_contents($logFile, date('Y-m-d H:i:s') . " [WARNING]: Could not determine image type for: " . $imgUrl . "\n", FILE_APPEND);
+                                    }
+                                } else {
+                                    file_put_contents($logFile, date('Y-m-d H:i:s') . " [WARNING]: Failed to download image: " . $imgUrl . "\n", FILE_APPEND);
+                                }
+                            } catch (Exception $e) {
+                                file_put_contents($logFile, date('Y-m-d H:i:s') . " [ERROR]: Error processing signature image: " . $e->getMessage() . "\n", FILE_APPEND);
+                            }
+                        }
+                    }
                 }
             }
 

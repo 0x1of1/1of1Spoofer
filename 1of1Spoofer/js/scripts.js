@@ -31,16 +31,101 @@ $(document).ready(function () {
                     }
                 }
             });
+
+            // Initialize signature editor if it exists
+            if ($("#signature").length) {
+                $("#signature").summernote({
+                    placeholder: 'Create your signature here...',
+                    height: 150,
+                    toolbar: [
+                        ['style', ['style', 'bold', 'italic', 'underline', 'clear']],
+                        ['font', ['strikethrough', 'superscript', 'subscript']],
+                        ['para', ['ul', 'ol', 'paragraph']],
+                        ['insert', ['link', 'picture', 'table', 'hr']],
+                        ['view', ['fullscreen', 'codeview', 'help']]
+                    ],
+                    dialogsInBody: true,
+                    dialogsFade: true,
+                    callbacks: {
+                        onInit: function () {
+                            // Fix dark mode for the editor
+                            $('.note-editable').css('background-color', '#2a2a2a');
+                            $('.note-editable').css('color', '#f5f5f5');
+                            $('.note-codable').css('background-color', '#2a2a2a');
+                            $('.note-codable').css('color', '#f5f5f5');
+                        }
+                    }
+                });
+            }
         } catch (e) {
             // Rich text editor initialization failed, fallback to normal textarea
             console.log("Rich text editor failed to initialize.");
             // Ensure the normal textarea has the right colors
             $("#message").addClass("bg-dark text-light");
+            $("#signature").addClass("bg-dark text-light");
         }
     } else {
         // Ensure textarea has dark mode styling if not using rich text editor
         $("#message").addClass("bg-dark text-light");
+        $("#signature").addClass("bg-dark text-light");
     }
+
+    // Toggle signature editor visibility when enableSignature checkbox is clicked
+    $("#enableSignature").on("change", function () {
+        if ($(this).is(":checked")) {
+            $("#signatureContainer").removeClass("d-none");
+        } else {
+            $("#signatureContainer").addClass("d-none");
+        }
+    });
+
+    // Save signature to localStorage
+    $("#saveSignatureBtn").on("click", function () {
+        let signature = '';
+        if ($("#signature").next('.note-editor').length) {
+            signature = $("#signature").summernote('code');
+        } else {
+            signature = $("#signature").val();
+        }
+
+        if (signature && signature.trim() !== '') {
+            localStorage.setItem('savedSignature', signature);
+
+            // Show feedback
+            const $btn = $(this);
+            const originalText = $btn.html();
+            $btn.html('<i class="bi bi-check-circle me-1"></i> Saved!');
+            setTimeout(function () {
+                $btn.html(originalText);
+            }, 2000);
+        }
+    });
+
+    // Load signature from localStorage
+    $("#loadSignatureBtn").on("click", function () {
+        const savedSignature = localStorage.getItem('savedSignature');
+
+        if (savedSignature) {
+            if ($("#signature").next('.note-editor').length) {
+                $("#signature").summernote('code', savedSignature);
+            } else {
+                $("#signature").val(savedSignature);
+            }
+
+            // Show feedback
+            const $btn = $(this);
+            const originalText = $btn.html();
+            $btn.html('<i class="bi bi-check-circle me-1"></i> Loaded!');
+            setTimeout(function () {
+                $btn.html(originalText);
+            }, 2000);
+
+            // Make sure the signature is enabled
+            $("#enableSignature").prop("checked", true).trigger("change");
+        } else {
+            alert("No saved signature found.");
+        }
+    });
 
     // Open settings modal
     $("#settingsBtn").on("click", function () {
@@ -418,6 +503,22 @@ $(document).ready(function () {
             message = $('#message').summernote('code');
         } else {
             message = $('#message').val();
+        }
+
+        // Get signature and append it to the message if enabled
+        if ($('#enableSignature').is(':checked')) {
+            let signature = '';
+            if ($('#signature').next('.note-editor').length) {
+                signature = $('#signature').summernote('code');
+            } else {
+                signature = $('#signature').val();
+            }
+
+            if (signature && signature.trim() !== '') {
+                // Add a divider and the signature
+                message += '<hr style="border-top: 1px solid #ccc; margin: 20px 0;">';
+                message += '<div class="signature">' + signature + '</div>';
+            }
         }
 
         // Disable submit button and show loading indicator
