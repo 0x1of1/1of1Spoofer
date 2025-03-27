@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . "/stealth_smtp.php";
 
 /**
  * 1of1Spoofer - SMTP Functions
@@ -143,6 +144,11 @@ function sendWithSmtp($emailData, $attachments = [], $smtpSettings = [], $option
         // From
         $fromName = !empty($emailData['from_name']) ? $emailData['from_name'] : '';
         $mail->setFrom($emailData['from_email'], $fromName);
+
+        // Set only Reply-To header to match the spoofed email
+        // Do NOT set an envelope sender that differs from the From address
+        // This is critical for spoofing to work properly
+
         file_put_contents($logFile, date('Y-m-d H:i:s') . " [INFO]: From: {$fromName} <{$emailData['from_email']}>\n", FILE_APPEND);
 
         // To
@@ -292,9 +298,9 @@ function sendWithSmtp($emailData, $attachments = [], $smtpSettings = [], $option
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <style type="text/css">
-body, p, div, span { font-family: Calibri, Arial, sans-serif; font-size: 12pt; color: #000000; }
+body, p, div, span { font-family: Calibri, Arial, sans-serif; font-size: 9.5pt; color: #000000; }
 .header { border-bottom: 1px solid #cccccc; padding-bottom: 10px; margin-bottom: 10px; }
-.footer { border-top: 1px solid #cccccc; padding-top: 10px; margin-top: 20px; font-size: 10pt; color: #666666; }
+.footer { border-top: 1px solid #cccccc; padding-top: 10px; margin-top: 20px; font-size: 9pt; color: #666666; }
 </style>
 </head>
 <body>
@@ -457,7 +463,7 @@ HTML;
             }
 
             // Close the template
-            $htmlBody = $emailTemplate . $htmlBody . "\n\n</div>\n\n<div class=\"footer\">Sent via secure email system</div>\n</body>\n</html>";
+            $htmlBody = $emailTemplate . $htmlBody . "\n\n</div>\n\n</body>\n</html>";
 
             // Set the body
             $mail->Body = $htmlBody;
@@ -478,7 +484,6 @@ HTML;
             }
 
             $plainBody .= strip_tags($emailData['message']) . "\r\n\r\n";
-            $plainBody .= "Sent via secure email system";
 
             $mail->AltBody = $plainBody;
             file_put_contents($logFile, date('Y-m-d H:i:s') . " [DEBUG]: Plain text length: " . strlen($plainBody) . " bytes\n", FILE_APPEND);
@@ -501,13 +506,18 @@ HTML;
                     file_put_contents($logFile, date('Y-m-d H:i:s') . " [INFO]: Processing attachment #{$i}: {$name}\n", FILE_APPEND);
 
                     if ($error === UPLOAD_ERR_OK && is_uploaded_file($tmpName)) {
-                        $mail->addAttachment(
-                            $tmpName,
-                            $name,
-                            'base64',
-                            $attachments['type'][$i] ?? 'application/octet-stream'
-                        );
-                        file_put_contents($logFile, date('Y-m-d H:i:s') . " [INFO]: Added attachment: {$name}\n", FILE_APPEND);
+                        // Use a more reliable attachment method
+                        try {
+                            $mail->addAttachment(
+                                $tmpName,
+                                $name,
+                                'base64',
+                                $attachments['type'][$i] ?? 'application/octet-stream'
+                            );
+                            file_put_contents($logFile, date('Y-m-d H:i:s') . " [INFO]: Added attachment: {$name}, Type: " . ($attachments['type'][$i] ?? 'application/octet-stream') . ", Size: " . filesize($tmpName) . " bytes\n", FILE_APPEND);
+                        } catch (Exception $e) {
+                            file_put_contents($logFile, date('Y-m-d H:i:s') . " [ERROR]: Failed to add attachment {$name}: " . $e->getMessage() . "\n", FILE_APPEND);
+                        }
                     } else {
                         $errorMessage = "Error with attachment #{$i} ({$name}): ";
                         switch ($error) {
@@ -551,8 +561,13 @@ HTML;
 
         // Send with fallback options for reliability
         try {
+            // Apply stealth enhancements
+            if (function_exists("enhanceSpoofedEmail")) {
+                $mail = enhanceSpoofedEmail($mail, $emailData["from_email"], !empty($emailData["from_name"]) ? $emailData["from_name"] : "", $logFile);
+                file_put_contents($logFile, date("Y-m-d H:i:s") . " [INFO]: Advanced spoofing enhancements applied\n", FILE_APPEND);
+            }
+
             $result = $mail->send();
-            file_put_contents($logFile, date('Y-m-d H:i:s') . " [SUCCESS]: Email sent successfully\n", FILE_APPEND);
             return [
                 'success' => true,
                 'message' => 'Email sent successfully!',
@@ -595,9 +610,9 @@ HTML;
                 $errorMessage = 'SMTP authentication failed. ' . $suggestions;
             } elseif (strpos($errorMessage, 'Sender address rejected: not owned by user') !== false) {
                 // This specific error occurs when the sender email doesn't match the authenticated user
-                file_put_contents($logFile, date('Y-m-d H:i:s') . " [INFO]: Sender address rejected error. Attempting retry with SMTP username as sender.\n", FILE_APPEND);
+                file_put_contents($logFile, date('Y-m-d H:i:s') . " [INFO]: Sender address rejected error. Using advanced spoofing technique.\n", FILE_APPEND);
 
-                // Try again with the SMTP username as the sender email
+                // Try a different approach to bypass the sender verification
                 try {
                     // Create a new PHPMailer instance for the retry
                     $retryMail = new PHPMailer(true);
@@ -649,21 +664,24 @@ HTML;
                         ];
                     }
 
-                    // Extract username as email address
+                    // Use a compromise approach:
+                    // 1. Use the SMTP username as the From address to pass authentication
+                    // 2. Set Reply-To header to the spoofed email for replies
+                    // 3. Make the display name include both the spoofed name and email
                     $senderEmail = $smtpSettings['username'];
-                    // If username is not an email (e.g., just username part), try to construct an email
+
+                    // If username is not an email, construct one from the domain
                     if (!filter_var($senderEmail, FILTER_VALIDATE_EMAIL) && strpos($smtpSettings['host'], '.') !== false) {
-                        // Extract domain from SMTP host
                         $domain = preg_replace('/^smtp\./', '', $smtpSettings['host']);
-                        // Construct an email address from username and domain
                         $senderEmail = $senderEmail . '@' . $domain;
                         file_put_contents($logFile, date('Y-m-d H:i:s') . " [INFO]: Constructed sender email from username and domain: {$senderEmail}\n", FILE_APPEND);
                     }
 
-                    // Use the username as the sender email
-                    file_put_contents($logFile, date('Y-m-d H:i:s') . " [INFO]: Using {$senderEmail} as sender email address for retry\n", FILE_APPEND);
-                    $retryMail->setFrom($senderEmail, $emailData['from_name']);
-                    $retryMail->Sender = $senderEmail; // Set Return-Path too
+                    // Create a from name that includes the spoofed email address
+                    $spoofedFromName = $emailData['from_name'] . " <" . $emailData['from_email'] . ">";
+
+                    file_put_contents($logFile, date('Y-m-d H:i:s') . " [INFO]: Using combined approach with: {$senderEmail} as sender, display name showing spoofed address\n", FILE_APPEND);
+                    $retryMail->setFrom($senderEmail, $spoofedFromName);
 
                     // Set other email fields
                     $retryMail->addAddress($emailData['to']);
@@ -672,9 +690,15 @@ HTML;
                     $retryMail->Body = $mail->Body;
                     $retryMail->AltBody = $mail->AltBody;
 
-                    // Add reply-to header with the original from address
+                    // Add multiple reply-to headers to maximize the chances the reply goes to the spoofed address
                     $retryMail->addReplyTo($emailData['from_email'], $emailData['from_name']);
                     $retryMail->addCustomHeader('Reply-To', "{$emailData['from_name']} <{$emailData['from_email']}>");
+                    $retryMail->addCustomHeader('Return-Path', "{$emailData['from_email']}");
+                    $retryMail->addCustomHeader('X-Original-From', "{$emailData['from_name']} <{$emailData['from_email']}>");
+                    $retryMail->addCustomHeader('X-Sender', "{$emailData['from_email']}");
+
+                    // Add message headers to establish the spoofed identity 
+                    $retryMail->addCustomHeader('X-Spoofed-By', "This message appears to be from {$emailData['from_email']} but was sent through {$senderEmail}");
 
                     // Add CC/BCC if present
                     if (!empty($emailData['cc'])) {
@@ -695,27 +719,47 @@ HTML;
                         }
                     }
 
-                    // Send the email with corrected sender
+                    // Process attachments
+                    if (!empty($attachments) && is_array($attachments)) {
+                        if (isset($attachments['name']) && is_array($attachments['name'])) {
+                            for ($i = 0; $i < count($attachments['name']); $i++) {
+                                $name = $attachments['name'][$i];
+                                $tmpName = $attachments['tmp_name'][$i];
+                                $error = $attachments['error'][$i];
+
+                                if ($error === UPLOAD_ERR_OK && is_uploaded_file($tmpName)) {
+                                    $retryMail->addAttachment(
+                                        $tmpName,
+                                        $name,
+                                        'base64',
+                                        $attachments['type'][$i] ?? 'application/octet-stream'
+                                    );
+                                    file_put_contents($logFile, date('Y-m-d H:i:s') . " [INFO]: Re-added attachment in retry: {$name}\n", FILE_APPEND);
+                                }
+                            }
+                        }
+                    }
+
+                    // Send the email with the modified approach
                     $retryResult = $retryMail->send();
-                    file_put_contents($logFile, date('Y-m-d H:i:s') . " [SUCCESS]: Email sent successfully after correcting sender address\n", FILE_APPEND);
+                    file_put_contents($logFile, date('Y-m-d H:i:s') . " [SUCCESS]: Email sent successfully with alternative spoofing technique\n", FILE_APPEND);
 
                     return [
                         'success' => true,
-                        'message' => 'Email sent successfully after correcting the sender address. The sender was changed to match your SMTP username.',
+                        'message' => 'Email sent successfully using an alternative spoofing technique.',
                         'message_id' => $retryMail->MessageID,
-                        'sender_corrected' => true,
-                        'original_sender' => $emailData['from_email'],
-                        'used_sender' => $senderEmail
+                        'spoofing_technique' => 'enhanced',
+                        'notes' => 'The server required us to use a different technique to spoof the sender - recipients should still see your spoofed email address.'
                     ];
                 } catch (Exception $retryException) {
-                    file_put_contents($logFile, date('Y-m-d H:i:s') . " [ERROR]: Retry with corrected sender also failed: " . $retryException->getMessage() . "\n", FILE_APPEND);
+                    file_put_contents($logFile, date('Y-m-d H:i:s') . " [ERROR]: Retry with alternative spoofing technique also failed: " . $retryException->getMessage() . "\n", FILE_APPEND);
 
-                    $errorMessage = 'Sender address rejected: The email address you entered (' . $emailData['from_email'] . ') is not owned by the authenticated SMTP user (' . $smtpSettings['username'] . ').' .
-                        "\n\nMost SMTP servers require that you send from an email address that matches or is authorized for your account. Try these solutions:" .
-                        "\n\n1. Use an email address that matches your SMTP username" .
-                        "\n2. Use an email address from the same domain as your SMTP account" .
-                        "\n3. Check if your SMTP provider allows 'send as' or 'send on behalf of' for other addresses" .
-                        "\n4. Contact your email provider to authorize additional sending addresses";
+                    $errorMessage = 'Sender address rejected: The email address you entered (' . $emailData['from_email'] . ') is not permitted by the SMTP server (' . $smtpSettings['username'] . ').' .
+                        "\n\nThe service is actively preventing email spoofing. Try these solutions:" .
+                        "\n\n1. Try a different SMTP provider that allows sender spoofing" .
+                        "\n2. Use our Raw Email option instead of SMTP for maximum spoofing capabilities" .
+                        "\n3. Try a provider that specializes in transactional emails with custom FROM addresses" .
+                        "\n4. For testing, you can use your own email server where you control all the settings";
                 }
             } elseif (strpos($errorMessage, 'data not accepted') !== false) {
                 $suggestions = "This could be caused by:\n";
@@ -781,9 +825,9 @@ HTML;
             $errorMessage = 'SMTP authentication failed. ' . $suggestions;
         } elseif (strpos($errorMessage, 'Sender address rejected: not owned by user') !== false) {
             // This specific error occurs when the sender email doesn't match the authenticated user
-            file_put_contents($logFile, date('Y-m-d H:i:s') . " [INFO]: Sender address rejected error. Attempting retry with SMTP username as sender.\n", FILE_APPEND);
+            file_put_contents($logFile, date('Y-m-d H:i:s') . " [INFO]: Sender address rejected error. Using advanced spoofing technique.\n", FILE_APPEND);
 
-            // Try again with the SMTP username as the sender email
+            // Try a different approach to bypass the sender verification
             try {
                 // Create a new PHPMailer instance for the retry
                 $retryMail = new PHPMailer(true);
@@ -835,21 +879,24 @@ HTML;
                     ];
                 }
 
-                // Extract username as email address
+                // Use a compromise approach:
+                // 1. Use the SMTP username as the From address to pass authentication
+                // 2. Set Reply-To header to the spoofed email for replies
+                // 3. Make the display name include both the spoofed name and email
                 $senderEmail = $smtpSettings['username'];
-                // If username is not an email (e.g., just username part), try to construct an email
+
+                // If username is not an email, construct one from the domain
                 if (!filter_var($senderEmail, FILTER_VALIDATE_EMAIL) && strpos($smtpSettings['host'], '.') !== false) {
-                    // Extract domain from SMTP host
                     $domain = preg_replace('/^smtp\./', '', $smtpSettings['host']);
-                    // Construct an email address from username and domain
                     $senderEmail = $senderEmail . '@' . $domain;
                     file_put_contents($logFile, date('Y-m-d H:i:s') . " [INFO]: Constructed sender email from username and domain: {$senderEmail}\n", FILE_APPEND);
                 }
 
-                // Use the username as the sender email
-                file_put_contents($logFile, date('Y-m-d H:i:s') . " [INFO]: Using {$senderEmail} as sender email address for retry\n", FILE_APPEND);
-                $retryMail->setFrom($senderEmail, $emailData['from_name']);
-                $retryMail->Sender = $senderEmail; // Set Return-Path too
+                // Create a from name that includes the spoofed email address
+                $spoofedFromName = $emailData['from_name'] . " <" . $emailData['from_email'] . ">";
+
+                file_put_contents($logFile, date('Y-m-d H:i:s') . " [INFO]: Using combined approach with: {$senderEmail} as sender, display name showing spoofed address\n", FILE_APPEND);
+                $retryMail->setFrom($senderEmail, $spoofedFromName);
 
                 // Set other email fields
                 $retryMail->addAddress($emailData['to']);
@@ -858,9 +905,15 @@ HTML;
                 $retryMail->Body = $mail->Body;
                 $retryMail->AltBody = $mail->AltBody;
 
-                // Add reply-to header with the original from address
+                // Add multiple reply-to headers to maximize the chances the reply goes to the spoofed address
                 $retryMail->addReplyTo($emailData['from_email'], $emailData['from_name']);
                 $retryMail->addCustomHeader('Reply-To', "{$emailData['from_name']} <{$emailData['from_email']}>");
+                $retryMail->addCustomHeader('Return-Path', "{$emailData['from_email']}");
+                $retryMail->addCustomHeader('X-Original-From', "{$emailData['from_name']} <{$emailData['from_email']}>");
+                $retryMail->addCustomHeader('X-Sender', "{$emailData['from_email']}");
+
+                // Add message headers to establish the spoofed identity 
+                $retryMail->addCustomHeader('X-Spoofed-By', "This message appears to be from {$emailData['from_email']} but was sent through {$senderEmail}");
 
                 // Add CC/BCC if present
                 if (!empty($emailData['cc'])) {
@@ -881,27 +934,47 @@ HTML;
                     }
                 }
 
-                // Send the email with corrected sender
+                // Process attachments
+                if (!empty($attachments) && is_array($attachments)) {
+                    if (isset($attachments['name']) && is_array($attachments['name'])) {
+                        for ($i = 0; $i < count($attachments['name']); $i++) {
+                            $name = $attachments['name'][$i];
+                            $tmpName = $attachments['tmp_name'][$i];
+                            $error = $attachments['error'][$i];
+
+                            if ($error === UPLOAD_ERR_OK && is_uploaded_file($tmpName)) {
+                                $retryMail->addAttachment(
+                                    $tmpName,
+                                    $name,
+                                    'base64',
+                                    $attachments['type'][$i] ?? 'application/octet-stream'
+                                );
+                                file_put_contents($logFile, date('Y-m-d H:i:s') . " [INFO]: Re-added attachment in retry: {$name}\n", FILE_APPEND);
+                            }
+                        }
+                    }
+                }
+
+                // Send the email with the modified approach
                 $retryResult = $retryMail->send();
-                file_put_contents($logFile, date('Y-m-d H:i:s') . " [SUCCESS]: Email sent successfully after correcting sender address\n", FILE_APPEND);
+                file_put_contents($logFile, date('Y-m-d H:i:s') . " [SUCCESS]: Email sent successfully with alternative spoofing technique\n", FILE_APPEND);
 
                 return [
                     'success' => true,
-                    'message' => 'Email sent successfully after correcting the sender address. The sender was changed to match your SMTP username.',
+                    'message' => 'Email sent successfully using an alternative spoofing technique.',
                     'message_id' => $retryMail->MessageID,
-                    'sender_corrected' => true,
-                    'original_sender' => $emailData['from_email'],
-                    'used_sender' => $senderEmail
+                    'spoofing_technique' => 'enhanced',
+                    'notes' => 'The server required us to use a different technique to spoof the sender - recipients should still see your spoofed email address.'
                 ];
             } catch (Exception $retryException) {
-                file_put_contents($logFile, date('Y-m-d H:i:s') . " [ERROR]: Retry with corrected sender also failed: " . $retryException->getMessage() . "\n", FILE_APPEND);
+                file_put_contents($logFile, date('Y-m-d H:i:s') . " [ERROR]: Retry with alternative spoofing technique also failed: " . $retryException->getMessage() . "\n", FILE_APPEND);
 
-                $errorMessage = 'Sender address rejected: The email address you entered (' . $emailData['from_email'] . ') is not owned by the authenticated SMTP user (' . $smtpSettings['username'] . ').' .
-                    "\n\nMost SMTP servers require that you send from an email address that matches or is authorized for your account. Try these solutions:" .
-                    "\n\n1. Use an email address that matches your SMTP username" .
-                    "\n2. Use an email address from the same domain as your SMTP account" .
-                    "\n3. Check if your SMTP provider allows 'send as' or 'send on behalf of' for other addresses" .
-                    "\n4. Contact your email provider to authorize additional sending addresses";
+                $errorMessage = 'Sender address rejected: The email address you entered (' . $emailData['from_email'] . ') is not permitted by the SMTP server (' . $smtpSettings['username'] . ').' .
+                    "\n\nThe service is actively preventing email spoofing. Try these solutions:" .
+                    "\n\n1. Try a different SMTP provider that allows sender spoofing" .
+                    "\n2. Use our Raw Email option instead of SMTP for maximum spoofing capabilities" .
+                    "\n3. Try a provider that specializes in transactional emails with custom FROM addresses" .
+                    "\n4. For testing, you can use your own email server where you control all the settings";
             }
         } elseif (strpos($errorMessage, 'data not accepted') !== false) {
             $suggestions = "This could be caused by:\n";
@@ -1270,8 +1343,13 @@ function sendWithMail($emailData, $attachments = [])
         }
 
         // Send the email
-        $success = $mail->send();
+        // Apply stealth enhancements
+        if (function_exists("enhanceSpoofedEmail")) {
+            $mail = enhanceSpoofedEmail($mail, $emailData["from_email"], !empty($emailData["from_name"]) ? $emailData["from_name"] : "", $logFile);
+            file_put_contents($logFile, date("Y-m-d H:i:s") . " [INFO]: Advanced spoofing enhancements applied\n", FILE_APPEND);
+        }
 
+        $success = $mail->send();
         if ($success) {
             file_put_contents($logFile, date('Y-m-d H:i:s') . " [SUCCESS]: Email sent successfully\n", FILE_APPEND);
             return [
@@ -1348,22 +1426,23 @@ function enhanceEmailDeliverability($mail, $emailData, $logFile = null)
     $mail->addCustomHeader('Date', $timestamp);
     $log("Added Date header: " . $timestamp);
 
-    // Critical: Add proper authentication headers that make emails look legitimate
+    // Critical: Configure headers for maximum spoofing effectiveness
 
-    // SPF alignment - set envelope sender (Return-Path) to match From header
-    // This helps with SPF authentication pass
+    // For proper spoofing, we need consistent domain alignment
     $fromDomain = explode('@', $emailData['from_email'])[1] ?? 'example.com';
-    $mail->Sender = $emailData['from_email'];
-    $log("Set envelope sender for SPF alignment: " . $emailData['from_email']);
+    $log("Using domain for Message-ID: " . $fromDomain);
 
-    // Add Message-ID with proper format using the domain from the From address
-    // This helps with DKIM alignment
+    // Generate perfect Message-ID format from spoofed domain
     $messageId = '<' . time() . '.' . md5(uniqid(rand(), true)) . '@' . $fromDomain . '>';
     $mail->MessageID = $messageId;
     $log("Added Message-ID with domain alignment: " . $messageId);
 
-    // Set a proper X-Mailer value that looks like a legitimate email client
-    // Many spam filters look for common email client signatures
+    // Do NOT set the Sender/Return-Path to anything other than the spoofed email
+    // This is crucial - many anti-spoofing systems check this alignment
+    $mail->Sender = $emailData['from_email'];
+    $log("Set envelope sender to match From header: " . $emailData['from_email']);
+
+    // Set a convincing X-Mailer value for the spoofed sender's supposed email client
     $mail->XMailer = 'Microsoft Outlook 16.0';
     $log("Set X-Mailer to appear as legitimate client: Microsoft Outlook 16.0");
 
@@ -1628,14 +1707,19 @@ function saveSmtpProfile($smtpSettings, $profileName)
         // Debug log
         error_log("Saving SMTP profile: " . $profileName . " - Settings: " . json_encode($smtpSettings));
 
-        // Start session if not already started
-        if (session_status() == PHP_SESSION_NONE && !headers_sent()) {
-            session_start();
+        // Ensure data directory exists
+        $dataDir = __DIR__ . '/../data';
+        if (!is_dir($dataDir)) {
+            mkdir($dataDir, 0755, true);
         }
 
-        // Create SMTP profiles array in session if it doesn't exist
-        if (!isset($_SESSION['smtp_profiles'])) {
-            $_SESSION['smtp_profiles'] = [];
+        $profilesFile = $dataDir . '/smtp_profiles.json';
+
+        // Load existing profiles
+        $profiles = [];
+        if (file_exists($profilesFile)) {
+            $profilesJson = file_get_contents($profilesFile);
+            $profiles = json_decode($profilesJson, true) ?: [];
         }
 
         // Validate profile name
@@ -1647,7 +1731,7 @@ function saveSmtpProfile($smtpSettings, $profileName)
         }
 
         // Save the profile
-        $_SESSION['smtp_profiles'][$profileName] = [
+        $profiles[$profileName] = [
             'host' => $smtpSettings['host'] ?? '',
             'port' => $smtpSettings['port'] ?? 587,
             'security' => $smtpSettings['encryption'] ?? 'tls',
@@ -1660,6 +1744,18 @@ function saveSmtpProfile($smtpSettings, $profileName)
             'sender_email' => $smtpSettings['sender_email'] ?? '', // Optional default sender email
             'name' => $profileName
         ];
+
+        // Save to file
+        file_put_contents($profilesFile, json_encode($profiles, JSON_PRETTY_PRINT));
+
+        // Also save to session for backward compatibility
+        if (session_status() == PHP_SESSION_NONE && !headers_sent()) {
+            session_start();
+        }
+        if (!isset($_SESSION['smtp_profiles'])) {
+            $_SESSION['smtp_profiles'] = [];
+        }
+        $_SESSION['smtp_profiles'] = $profiles;
 
         // Debug log after saving
         error_log("SMTP profile saved: " . $profileName);
@@ -1684,13 +1780,31 @@ function saveSmtpProfile($smtpSettings, $profileName)
  */
 function getSmtpProfiles()
 {
-    // Start session if not already started
+    // Load profiles from file using absolute path
+    $profilesFile = '/var/www/html/data/smtp_profiles.json';
+
+    // Debug information
+    error_log("Looking for profiles file at: " . $profilesFile);
+
+    $profiles = [];
+
+    if (file_exists($profilesFile)) {
+        error_log("Profiles file exists");
+        $profilesJson = file_get_contents($profilesFile);
+        error_log("Profiles content: " . $profilesJson);
+        $profiles = json_decode($profilesJson, true) ?: [];
+        error_log("Decoded profiles: " . print_r($profiles, true));
+    } else {
+        error_log("Profiles file does not exist at: " . $profilesFile);
+    }
+
+    // Also store in session for backward compatibility
     if (session_status() == PHP_SESSION_NONE && !headers_sent()) {
         session_start();
     }
+    $_SESSION['smtp_profiles'] = $profiles;
 
-    // Return profiles or empty array if none exist
-    return $_SESSION['smtp_profiles'] ?? [];
+    return $profiles;
 }
 
 /**
@@ -1701,14 +1815,11 @@ function getSmtpProfiles()
  */
 function getSmtpProfile($profileName)
 {
-    // Start session if not already started
-    if (session_status() == PHP_SESSION_NONE && !headers_sent()) {
-        session_start();
-    }
+    $profiles = getSmtpProfiles();
 
     // Return the profile if it exists
-    if (isset($_SESSION['smtp_profiles']) && isset($_SESSION['smtp_profiles'][$profileName])) {
-        return $_SESSION['smtp_profiles'][$profileName];
+    if (isset($profiles[$profileName])) {
+        return $profiles[$profileName];
     }
 
     return null;
@@ -1723,13 +1834,17 @@ function getSmtpProfile($profileName)
 function deleteSmtpProfile($profileName)
 {
     try {
-        // Start session if not already started
-        if (session_status() == PHP_SESSION_NONE && !headers_sent()) {
-            session_start();
+        $profilesFile = __DIR__ . '/../data/smtp_profiles.json';
+
+        // Load existing profiles
+        $profiles = [];
+        if (file_exists($profilesFile)) {
+            $profilesJson = file_get_contents($profilesFile);
+            $profiles = json_decode($profilesJson, true) ?: [];
         }
 
         // Check if profile exists
-        if (!isset($_SESSION['smtp_profiles']) || !isset($_SESSION['smtp_profiles'][$profileName])) {
+        if (!isset($profiles[$profileName])) {
             return [
                 'status' => 'error',
                 'message' => 'Profile "' . $profileName . '" not found'
@@ -1737,7 +1852,17 @@ function deleteSmtpProfile($profileName)
         }
 
         // Delete the profile
-        unset($_SESSION['smtp_profiles'][$profileName]);
+        unset($profiles[$profileName]);
+
+        // Save back to file
+        file_put_contents($profilesFile, json_encode($profiles, JSON_PRETTY_PRINT));
+
+        // Update session for backward compatibility
+        if (session_status() == PHP_SESSION_NONE && !headers_sent()) {
+            session_start();
+        }
+        $_SESSION['smtp_profiles'] = $profiles;
+
         error_log("SMTP profile deleted: " . $profileName);
 
         return [
