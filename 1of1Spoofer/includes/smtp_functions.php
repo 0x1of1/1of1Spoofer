@@ -332,6 +332,47 @@ HTML;
             // Sanitize HTML content
             $htmlBody = $emailData['message'];
 
+            // Process inline base64 images and convert them to embedded images with CIDs
+            // This handles images pasted directly into the rich text editor
+            $pattern = '/<img[^>]*src="data:image\/(jpeg|jpg|png|gif);base64,([^"]+)"[^>]*>/i';
+            if (preg_match_all($pattern, $htmlBody, $matches, PREG_SET_ORDER)) {
+                foreach ($matches as $index => $match) {
+                    $imageType = $match[1];
+                    $base64Data = $match[2];
+
+                    // Generate a temp file for the image
+                    $tempDir = sys_get_temp_dir();
+                    $tempFile = tempnam($tempDir, 'img_');
+
+                    // Add correct extension
+                    $extension = ($imageType == 'jpg') ? 'jpeg' : $imageType;
+                    $tempFileWithExt = $tempFile . '.' . $extension;
+                    rename($tempFile, $tempFileWithExt);
+
+                    // Decode and save the image
+                    $imageData = base64_decode($base64Data);
+                    file_put_contents($tempFileWithExt, $imageData);
+
+                    // Generate a CID
+                    $cid = 'inline_' . md5(rand() . time() . $index) . '@' . $domain;
+
+                    // Add as embedded image
+                    $mail->addEmbeddedImage(
+                        $tempFileWithExt,
+                        $cid,
+                        'image_' . $index . '.' . $extension,
+                        'base64',
+                        'image/' . $extension
+                    );
+
+                    // Replace in the HTML
+                    $replacement = '<img src="cid:' . $cid . '"';
+                    $htmlBody = str_replace($match[0], $replacement, $htmlBody);
+
+                    file_put_contents($logFile, date('Y-m-d H:i:s') . " [INFO]: Converted inline base64 image to embedded image with CID: $cid\n", FILE_APPEND);
+                }
+            }
+
             // Remove potentially problematic content that triggers spam filters
             $htmlBody = preg_replace('/<!--(.*?)-->/s', '', $htmlBody); // Remove HTML comments
             $htmlBody = preg_replace('/<script\b[^>]*>(.*?)<\/script>/is', '', $htmlBody); // Remove scripts
@@ -449,7 +490,7 @@ HTML;
             $htmlBody = str_replace(["\r\n", "\r"], "\n", $htmlBody);
 
             // Use simplified HTML tags - avoid too many colors, fonts and formatting tags
-            $allowedTags = '<p><br><a><b><i><u><strong><em><div><span><table><tr><td><th><h1><h2><h3><h4><li><ul><ol>';
+            $allowedTags = '<p><br><a><b><i><u><strong><em><div><span><table><tr><td><th><h1><h2><h3><h4><li><ul><ol><img>';
             $htmlBody = strip_tags($htmlBody, $allowedTags);
 
             // Make sure image URLs use https
@@ -502,53 +543,62 @@ HTML;
                     $name = $attachments['name'][$i];
                     $tmpName = $attachments['tmp_name'][$i];
                     $error = $attachments['error'][$i];
+                    $type = $attachments['type'][$i] ?? '';
 
                     file_put_contents($logFile, date('Y-m-d H:i:s') . " [INFO]: Processing attachment #{$i}: {$name}\n", FILE_APPEND);
 
                     if ($error === UPLOAD_ERR_OK && is_uploaded_file($tmpName)) {
-                        // Use a more reliable attachment method
-                        try {
-                            $mail->addAttachment(
-                                $tmpName,
-                                $name,
-                                'base64',
-                                $attachments['type'][$i] ?? 'application/octet-stream'
-                            );
-                            file_put_contents($logFile, date('Y-m-d H:i:s') . " [INFO]: Added attachment: {$name}, Type: " . ($attachments['type'][$i] ?? 'application/octet-stream') . ", Size: " . filesize($tmpName) . " bytes\n", FILE_APPEND);
-                        } catch (Exception $e) {
-                            file_put_contents($logFile, date('Y-m-d H:i:s') . " [ERROR]: Failed to add attachment {$name}: " . $e->getMessage() . "\n", FILE_APPEND);
+                        // Check if this is an image that should be embedded
+                        $isImage = strpos($type, 'image/') === 0;
+                        $shouldEmbed = isset($_POST['embed_images']) && $_POST['embed_images'] === 'yes';
+
+                        if ($isImage && $shouldEmbed) {
+                            // Generate a Content-ID for the image
+                            $cid = 'img_' . md5($name . time() . rand(0, 1000)) . '@' . $domain;
+
+                            // Add as embedded image
+                            try {
+                                $mail->addEmbeddedImage(
+                                    $tmpName,
+                                    $cid,
+                                    $name,
+                                    'base64',
+                                    $type
+                                );
+
+                                // Replace image src in the HTML with the CID
+                                $imgPattern = '/<img([^>]*)src=["\']([^"\']*' . preg_quote(basename($name), '/') . ')["\']([^>]*)>/i';
+                                $replacement = '<img$1src="cid:' . $cid . '"$3>';
+                                $mail->Body = preg_replace($imgPattern, $replacement, $mail->Body);
+
+                                file_put_contents($logFile, date('Y-m-d H:i:s') . " [INFO]: Added embedded image: {$name} with CID: {$cid}\n", FILE_APPEND);
+                            } catch (Exception $e) {
+                                file_put_contents($logFile, date('Y-m-d H:i:s') . " [ERROR]: Failed to embed image {$name}: " . $e->getMessage() . "\n", FILE_APPEND);
+
+                                // Fall back to regular attachment
+                                $mail->addAttachment(
+                                    $tmpName,
+                                    $name,
+                                    'base64',
+                                    $type
+                                );
+                            }
+                        } else {
+                            // Use a more reliable attachment method
+                            try {
+                                $mail->addAttachment(
+                                    $tmpName,
+                                    $name,
+                                    'base64',
+                                    $type
+                                );
+                                file_put_contents($logFile, date('Y-m-d H:i:s') . " [INFO]: Added attachment: {$name}, Type: " . $type . ", Size: " . filesize($tmpName) . " bytes\n", FILE_APPEND);
+                            } catch (Exception $e) {
+                                file_put_contents($logFile, date('Y-m-d H:i:s') . " [ERROR]: Failed to add attachment {$name}: " . $e->getMessage() . "\n", FILE_APPEND);
+                            }
                         }
                     } else {
-                        $errorMessage = "Error with attachment #{$i} ({$name}): ";
-                        switch ($error) {
-                            case UPLOAD_ERR_INI_SIZE:
-                                $errorMessage .= "The file exceeds the upload_max_filesize directive in php.ini";
-                                break;
-                            case UPLOAD_ERR_FORM_SIZE:
-                                $errorMessage .= "The file exceeds the MAX_FILE_SIZE directive in the HTML form";
-                                break;
-                            case UPLOAD_ERR_PARTIAL:
-                                $errorMessage .= "The file was only partially uploaded";
-                                break;
-                            case UPLOAD_ERR_NO_FILE:
-                                $errorMessage .= "No file was uploaded";
-                                break;
-                            case UPLOAD_ERR_NO_TMP_DIR:
-                                $errorMessage .= "Missing a temporary folder";
-                                break;
-                            case UPLOAD_ERR_CANT_WRITE:
-                                $errorMessage .= "Failed to write file to disk";
-                                break;
-                            case UPLOAD_ERR_EXTENSION:
-                                $errorMessage .= "A PHP extension stopped the file upload";
-                                break;
-                            default:
-                                $errorMessage .= "Unknown error";
-                        }
-                        if (!is_uploaded_file($tmpName)) {
-                            $errorMessage .= ". Also, temporary file is not a valid uploaded file.";
-                        }
-                        file_put_contents($logFile, date('Y-m-d H:i:s') . " [ERROR]: {$errorMessage}\n", FILE_APPEND);
+                        file_put_contents($logFile, date('Y-m-d H:i:s') . " [ERROR]: Upload error for attachment #{$i}: {$name}, Error code: {$error}\n", FILE_APPEND);
                     }
                 }
             } else {
@@ -726,15 +776,60 @@ HTML;
                                 $name = $attachments['name'][$i];
                                 $tmpName = $attachments['tmp_name'][$i];
                                 $error = $attachments['error'][$i];
+                                $type = $attachments['type'][$i] ?? '';
 
                                 if ($error === UPLOAD_ERR_OK && is_uploaded_file($tmpName)) {
-                                    $retryMail->addAttachment(
-                                        $tmpName,
-                                        $name,
-                                        'base64',
-                                        $attachments['type'][$i] ?? 'application/octet-stream'
-                                    );
-                                    file_put_contents($logFile, date('Y-m-d H:i:s') . " [INFO]: Re-added attachment in retry: {$name}\n", FILE_APPEND);
+                                    // Check if this is an image that should be embedded
+                                    $isImage = strpos($type, 'image/') === 0;
+                                    $shouldEmbed = isset($_POST['embed_images']) && $_POST['embed_images'] === 'yes';
+
+                                    if ($isImage && $shouldEmbed) {
+                                        // Generate a Content-ID for the image
+                                        $cid = 'img_' . md5($name . time() . rand(0, 1000)) . '@' . $domain;
+
+                                        // Add as embedded image
+                                        try {
+                                            $mail->addEmbeddedImage(
+                                                $tmpName,
+                                                $cid,
+                                                $name,
+                                                'base64',
+                                                $type
+                                            );
+
+                                            // Replace image src in the HTML with the CID
+                                            $imgPattern = '/<img([^>]*)src=["\']([^"\']*' . preg_quote(basename($name), '/') . ')["\']([^>]*)>/i';
+                                            $replacement = '<img$1src="cid:' . $cid . '"$3>';
+                                            $mail->Body = preg_replace($imgPattern, $replacement, $mail->Body);
+
+                                            file_put_contents($logFile, date('Y-m-d H:i:s') . " [INFO]: Added embedded image: {$name} with CID: {$cid}\n", FILE_APPEND);
+                                        } catch (Exception $e) {
+                                            file_put_contents($logFile, date('Y-m-d H:i:s') . " [ERROR]: Failed to embed image {$name}: " . $e->getMessage() . "\n", FILE_APPEND);
+
+                                            // Fall back to regular attachment
+                                            $mail->addAttachment(
+                                                $tmpName,
+                                                $name,
+                                                'base64',
+                                                $type
+                                            );
+                                        }
+                                    } else {
+                                        // Use a more reliable attachment method
+                                        try {
+                                            $mail->addAttachment(
+                                                $tmpName,
+                                                $name,
+                                                'base64',
+                                                $type
+                                            );
+                                            file_put_contents($logFile, date('Y-m-d H:i:s') . " [INFO]: Added attachment: {$name}, Type: " . $type . ", Size: " . filesize($tmpName) . " bytes\n", FILE_APPEND);
+                                        } catch (Exception $e) {
+                                            file_put_contents($logFile, date('Y-m-d H:i:s') . " [ERROR]: Failed to add attachment {$name}: " . $e->getMessage() . "\n", FILE_APPEND);
+                                        }
+                                    }
+                                } else {
+                                    file_put_contents($logFile, date('Y-m-d H:i:s') . " [ERROR]: Upload error for attachment #{$i}: {$name}, Error code: {$error}\n", FILE_APPEND);
                                 }
                             }
                         }
@@ -941,15 +1036,60 @@ HTML;
                             $name = $attachments['name'][$i];
                             $tmpName = $attachments['tmp_name'][$i];
                             $error = $attachments['error'][$i];
+                            $type = $attachments['type'][$i] ?? '';
 
                             if ($error === UPLOAD_ERR_OK && is_uploaded_file($tmpName)) {
-                                $retryMail->addAttachment(
-                                    $tmpName,
-                                    $name,
-                                    'base64',
-                                    $attachments['type'][$i] ?? 'application/octet-stream'
-                                );
-                                file_put_contents($logFile, date('Y-m-d H:i:s') . " [INFO]: Re-added attachment in retry: {$name}\n", FILE_APPEND);
+                                // Check if this is an image that should be embedded
+                                $isImage = strpos($type, 'image/') === 0;
+                                $shouldEmbed = isset($_POST['embed_images']) && $_POST['embed_images'] === 'yes';
+
+                                if ($isImage && $shouldEmbed) {
+                                    // Generate a Content-ID for the image
+                                    $cid = 'img_' . md5($name . time() . rand(0, 1000)) . '@' . $domain;
+
+                                    // Add as embedded image
+                                    try {
+                                        $mail->addEmbeddedImage(
+                                            $tmpName,
+                                            $cid,
+                                            $name,
+                                            'base64',
+                                            $type
+                                        );
+
+                                        // Replace image src in the HTML with the CID
+                                        $imgPattern = '/<img([^>]*)src=["\']([^"\']*' . preg_quote(basename($name), '/') . ')["\']([^>]*)>/i';
+                                        $replacement = '<img$1src="cid:' . $cid . '"$3>';
+                                        $mail->Body = preg_replace($imgPattern, $replacement, $mail->Body);
+
+                                        file_put_contents($logFile, date('Y-m-d H:i:s') . " [INFO]: Added embedded image: {$name} with CID: {$cid}\n", FILE_APPEND);
+                                    } catch (Exception $e) {
+                                        file_put_contents($logFile, date('Y-m-d H:i:s') . " [ERROR]: Failed to embed image {$name}: " . $e->getMessage() . "\n", FILE_APPEND);
+
+                                        // Fall back to regular attachment
+                                        $mail->addAttachment(
+                                            $tmpName,
+                                            $name,
+                                            'base64',
+                                            $type
+                                        );
+                                    }
+                                } else {
+                                    // Use a more reliable attachment method
+                                    try {
+                                        $mail->addAttachment(
+                                            $tmpName,
+                                            $name,
+                                            'base64',
+                                            $type
+                                        );
+                                        file_put_contents($logFile, date('Y-m-d H:i:s') . " [INFO]: Added attachment: {$name}, Type: " . $type . ", Size: " . filesize($tmpName) . " bytes\n", FILE_APPEND);
+                                    } catch (Exception $e) {
+                                        file_put_contents($logFile, date('Y-m-d H:i:s') . " [ERROR]: Failed to add attachment {$name}: " . $e->getMessage() . "\n", FILE_APPEND);
+                                    }
+                                }
+                            } else {
+                                file_put_contents($logFile, date('Y-m-d H:i:s') . " [ERROR]: Upload error for attachment #{$i}: {$name}, Error code: {$error}\n", FILE_APPEND);
                             }
                         }
                     }
