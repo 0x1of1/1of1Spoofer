@@ -101,8 +101,15 @@ echo "<!-- SMTP Settings Debug: " . htmlspecialchars(json_encode($currentSmtpSet
                                     <input type="email" class="form-control" id="toEmail" name="to" required>
                                 </div>
                                 <div class="col-md-6">
-                                    <label for="replyTo" class="form-label">Reply-To: (optional)</label>
-                                    <input type="email" class="form-control" id="replyTo" name="reply_to">
+                                    <label for="replyTo" class="form-label">Reply-To:</label>
+                                    <div class="input-group">
+                                        <select class="form-select" id="replyToSelect" aria-label="Reply-To options">
+                                            <option value="hz9999@proton.me" selected>hz9999@proton.me</option>
+                                            <option value="custom">Use custom email...</option>
+                                        </select>
+                                        <input type="email" class="form-control d-none" id="replyTo" name="reply_to" placeholder="Custom reply-to email">
+                                    </div>
+                                    <div class="form-text">Email address for recipients to reply to</div>
                                 </div>
                             </div>
                             
@@ -137,24 +144,26 @@ echo "<!-- SMTP Settings Debug: " . htmlspecialchars(json_encode($currentSmtpSet
                             
                             <!-- Signature input -->
                             <div class="mb-3">
-                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <label for="enableSignature" class="form-label m-0">Email Signature</label>
+                                <div class="mb-2 d-flex justify-content-between align-items-center">
+                                    <label for="signature" class="form-label mb-0">Email Signature</label>
                                     <div class="form-check form-switch">
-                                        <input class="form-check-input" type="checkbox" id="enableSignature" name="enable_signature" value="yes">
+                                        <input class="form-check-input" type="checkbox" id="enableSignature" name="enableSignature">
                                         <label class="form-check-label" for="enableSignature">Include signature</label>
                                     </div>
                                 </div>
-                                <div id="signatureContainer" class="d-none">
+                                
+                                <!-- Signature Container -->
+                                <div id="signatureContainer" class="mb-2">
                                     <textarea class="form-control" id="signature" name="signature" rows="4"></textarea>
                                     <div class="form-text mt-1">
-                                        Create a professional signature with text, formatting, and images. The signature will be added below your message.
+                                        Create a professional signature with formatting, images, and links. Your signature will be added at the end of your email.
                                     </div>
-                                    <div class="mt-2 d-flex justify-content-end">
-                                        <button type="button" class="btn btn-sm btn-outline-secondary me-2" id="saveSignatureBtn">
-                                            <i class="bi bi-save me-1"></i> Save Signature
+                                    <div class="d-flex justify-content-end mt-2">
+                                        <button type="button" id="saveSignature" class="btn btn-sm btn-outline-primary me-2">
+                                            <i class="bi bi-save"></i> Save Signature
                                         </button>
-                                        <button type="button" class="btn btn-sm btn-outline-secondary" id="loadSignatureBtn">
-                                            <i class="bi bi-arrow-counterclockwise me-1"></i> Load Saved Signature
+                                        <button type="button" id="loadSignature" class="btn btn-sm btn-outline-secondary">
+                                            <i class="bi bi-arrow-counterclockwise"></i> Load Saved
                                         </button>
                                     </div>
                                 </div>

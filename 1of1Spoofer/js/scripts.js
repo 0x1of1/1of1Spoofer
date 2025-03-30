@@ -16,7 +16,7 @@ $(document).ready(function () {
                     ['style', ['style', 'bold', 'italic', 'underline', 'clear']],
                     ['font', ['strikethrough', 'superscript', 'subscript']],
                     ['para', ['ul', 'ol', 'paragraph']],
-                    ['insert', ['link', 'table', 'hr']],
+                    ['insert', ['link', 'picture', 'table', 'hr']],
                     ['view', ['fullscreen', 'codeview', 'help']]
                 ],
                 dialogsInBody: true,
@@ -28,12 +28,57 @@ $(document).ready(function () {
                         $('.note-editable').css('color', '#f5f5f5');
                         $('.note-codable').css('background-color', '#2a2a2a');
                         $('.note-codable').css('color', '#f5f5f5');
+                    },
+                    onImageUpload: function (files) {
+                        console.log("Message - Image upload detected");
+                        for (let i = 0; i < files.length; i++) {
+                            const file = files[i];
+                            if (file.type.indexOf('image') === 0) {
+                                const reader = new FileReader();
+                                reader.onloadend = function () {
+                                    const image = document.createElement('img');
+                                    image.src = reader.result;
+                                    $(this).summernote('insertNode', image);
+                                }.bind(this);
+                                reader.readAsDataURL(file);
+                            }
+                        }
+                    },
+                    onPaste: function (e) {
+                        console.log("Message - Paste event detected");
+                        const clipboardData = e.originalEvent.clipboardData;
+                        if (!clipboardData || !clipboardData.items) return;
+
+                        const items = clipboardData.items;
+                        for (let i = 0; i < items.length; i++) {
+                            if (items[i].type.indexOf('image') !== -1) {
+                                console.log("Message - Found image in clipboard");
+                                const blob = items[i].getAsFile();
+                                const reader = new FileReader();
+                                reader.onloadend = function () {
+                                    const img = document.createElement('img');
+                                    img.src = reader.result;
+                                    $(this).summernote('insertNode', img);
+                                }.bind(this);
+                                reader.readAsDataURL(blob);
+                            }
+                        }
                     }
                 }
             });
 
             // Initialize signature editor if it exists
             if ($("#signature").length) {
+                // First destroy any existing instance to ensure clean start
+                try {
+                    if ($("#signature").next('.note-editor').length) {
+                        $("#signature").summernote('destroy');
+                    }
+                } catch (e) {
+                    console.error("Error destroying editor:", e);
+                }
+
+                // Create a completely new configuration - identical to message editor
                 $("#signature").summernote({
                     placeholder: 'Create your signature here...',
                     height: 150,
@@ -53,6 +98,38 @@ $(document).ready(function () {
                             $('.note-editable').css('color', '#f5f5f5');
                             $('.note-codable').css('background-color', '#2a2a2a');
                             $('.note-codable').css('color', '#f5f5f5');
+                        },
+                        onImageUpload: function (files) {
+                            for (let i = 0; i < files.length; i++) {
+                                const file = files[i];
+                                if (file.type.indexOf('image') === 0) {
+                                    const reader = new FileReader();
+                                    reader.onloadend = function () {
+                                        const image = document.createElement('img');
+                                        image.src = reader.result;
+                                        $(this).summernote('insertNode', image);
+                                    }.bind(this);
+                                    reader.readAsDataURL(file);
+                                }
+                            }
+                        },
+                        onPaste: function (e) {
+                            const clipboardData = e.originalEvent.clipboardData;
+                            if (!clipboardData || !clipboardData.items) return;
+
+                            const items = clipboardData.items;
+                            for (let i = 0; i < items.length; i++) {
+                                if (items[i].type.indexOf('image') !== -1) {
+                                    const blob = items[i].getAsFile();
+                                    const reader = new FileReader();
+                                    reader.onloadend = function () {
+                                        const img = document.createElement('img');
+                                        img.src = reader.result;
+                                        $(this).summernote('insertNode', img);
+                                    }.bind(this);
+                                    reader.readAsDataURL(blob);
+                                }
+                            }
                         }
                     }
                 });
@@ -70,60 +147,66 @@ $(document).ready(function () {
         $("#signature").addClass("bg-dark text-light");
     }
 
-    // Toggle signature editor visibility when enableSignature checkbox is clicked
+    // IMMEDIATE DIAGNOSTICS
+    console.log("----------------------------------------");
+    console.log("SIGNATURE DIAGNOSTICS:");
+    console.log("enableSignature checkbox exists:", $("#enableSignature").length);
+    console.log("signatureContainer exists:", $("#signatureContainer").length);
+    console.log("signature textarea exists:", $("#signature").length);
+
+    // Simple signature container toggle
+    // First hide the container initially
+    $("#signatureContainer").hide();
+
+    // Add simple change handler for the checkbox
     $("#enableSignature").on("change", function () {
         if ($(this).is(":checked")) {
-            $("#signatureContainer").removeClass("d-none");
+            $("#signatureContainer").slideDown();
+            console.log("Signature container should be visible now");
         } else {
-            $("#signatureContainer").addClass("d-none");
+            $("#signatureContainer").slideUp();
+            console.log("Signature container should be hidden now");
         }
     });
 
-    // Save signature to localStorage
-    $("#saveSignatureBtn").on("click", function () {
-        let signature = '';
-        if ($("#signature").next('.note-editor').length) {
-            signature = $("#signature").summernote('code');
+    // Handle Reply-To dropdown selection
+    $("#replyToSelect").on("change", function () {
+        const selectedValue = $(this).val();
+
+        if (selectedValue === "custom") {
+            // Show the custom email input and focus it
+            $("#replyTo").removeClass("d-none").focus();
         } else {
-            signature = $("#signature").val();
+            // Hide the custom input and set its value to the selected option
+            $("#replyTo").addClass("d-none").val(selectedValue);
         }
+    });
 
-        if (signature && signature.trim() !== '') {
-            localStorage.setItem('savedSignature', signature);
+    // Set initial value based on dropdown
+    $("#replyTo").val($("#replyToSelect").val());
 
-            // Show feedback
-            const $btn = $(this);
-            const originalText = $btn.html();
-            $btn.html('<i class="bi bi-check-circle me-1"></i> Saved!');
-            setTimeout(function () {
-                $btn.html(originalText);
-            }, 2000);
-        }
+    // Save signature to localStorage
+    $("#saveSignature").on("click", function () {
+        // Get content from the Summernote editor
+        const signatureContent = $("#signature").summernote('code');
+        localStorage.setItem("savedSignature", signatureContent);
+        alert("Signature saved successfully!");
+        console.log("Signature saved:", signatureContent.substring(0, 50) + "...");
     });
 
     // Load signature from localStorage
-    $("#loadSignatureBtn").on("click", function () {
-        const savedSignature = localStorage.getItem('savedSignature');
-
+    $("#loadSignature").on("click", function () {
+        const savedSignature = localStorage.getItem("savedSignature");
         if (savedSignature) {
-            if ($("#signature").next('.note-editor').length) {
-                $("#signature").summernote('code', savedSignature);
-            } else {
-                $("#signature").val(savedSignature);
-            }
-
-            // Show feedback
-            const $btn = $(this);
-            const originalText = $btn.html();
-            $btn.html('<i class="bi bi-check-circle me-1"></i> Loaded!');
-            setTimeout(function () {
-                $btn.html(originalText);
-            }, 2000);
-
-            // Make sure the signature is enabled
+            // Set content in the Summernote editor
+            $("#signature").summernote('code', savedSignature);
+            alert("Signature loaded successfully!");
+            console.log("Signature loaded from storage");
+            // Make sure the signature is enabled and visible
             $("#enableSignature").prop("checked", true).trigger("change");
         } else {
             alert("No saved signature found.");
+            console.log("No saved signature found in storage");
         }
     });
 
